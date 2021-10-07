@@ -1,0 +1,5 @@
+./save/*
+./logger/*
+./dataset/*
+./results/*
+./__pycache__
