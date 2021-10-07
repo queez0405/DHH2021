@@ -11,6 +11,7 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.svm import SVR
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
 
 from sklearn.feature_selection import SelectFromModel
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
@@ -107,14 +108,22 @@ def get_model(args):
                         'subsample': [0.25, 0.5, 0.75, 1.0],
                         'max_features': ['auto', 'sqrt', 'log2'],         
                     }
+    elif args.model == 'lightgbm':
+        ml_model = LGBMRegressor(n_estimators=250, learning_rate=0.12, max_depth=2, boosting_type='gbdt', subsample=1.0, random_state=random_state)
+        parameters = {
+                        'n_estimators': [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250],
+                        'max_depth': [None, 2, 3, 4, 5, 6, 7 , 8, 9, 10, 11, 12, 13, 14, 15, 16],
+                        'learning_rate': [0.08, 0.09, 0.1, 0.11, 0.12],
+                        'subsample': [0.25, 0.5, 0.75, 1.0],
+                        'boosting_type': ['gbdt', 'goss’', 'dart', 'rf'],
+                    }
     
     if args.running_mode == 'search_param':
         return ml_model, parameters
     else:
         return ml_model
 
-sample_imp_regressor = ['gradient_boosting', 'xgboost', 'adaboost', 'random_forest', 'extra_tree']#'decision_tree',
-# sample_imp_regressor = ['xgboost']
+sample_imp_regressor = ['gradient_boosting', 'lightgbm', 'xgboost', 'random_forest']#'decision_tree', 'adaboost',
 
 def get_whole_csv():
     clinical_csv = pd.read_csv('./dataset/Clinical_Variables.csv',index_col=0)
@@ -254,17 +263,23 @@ def main():
         treated_clinical_csv, treated_genetic_csv, treated_surv_time_csv, treated_treat_csv = get_treat_csv(is_treat, clinical_csv, genetic_csv, surv_time_csv, treat_csv)
         treated_x = np.concatenate((treated_genetic_csv,treated_clinical_csv), axis=1)
         treated_y = np.array(treated_surv_time_csv.loc[:,'time'])
+        
         treated_importance = []
 
         point_dic = {i:[] for i in range(genetic_csv.shape[1])}
         weighted_value = []
 
         for model in sample_imp_regressor:
+
             print(model)
             args.model = model
             ml_model = get_model(args)
 
             kfold = KFold(n_splits=10, random_state=random_state, shuffle=True)
+
+            RMS.reset()
+            MAE.reset()
+            R2.reset()
 
             for train_idx, test_idx in tqdm(kfold.split(x)):
                 ml_model.fit(x[train_idx], y[train_idx])
@@ -274,7 +289,7 @@ def main():
                 RMS.update(mean_squared_error(y_pred, y[test_idx])**0.5)
                 MAE.update(mean_absolute_error(y_pred, y[test_idx]))
                 R2.update(r2_score(y_pred, y[test_idx]))
-            # print(f'RMS:{RMS.avg:.03f}           MAE:{MAE.avg:.03f}             R2:{R2.avg:.03f}')
+            print(f'RMS:{RMS.avg:.03f}           MAE:{MAE.avg:.03f}             R2:{R2.avg:.03f}')
             weighted_value.append(RMS.avg)
 
             RMS.reset()
@@ -327,9 +342,8 @@ def main():
             point_dic[i] = np.average(point_dic[i], weights=weighted_value)
 
         result = sorted(point_dic.items(), key=lambda x:x[1])
-        import pdb;pdb.set_trace()
 
-        print(np.flip(np.array([i for i,_ in result[-30:]])+1).tolist())
+        print(np.flip(np.array([i for i,_ in result])+1).tolist())
         
     else:
         return

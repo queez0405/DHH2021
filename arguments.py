@@ -7,7 +7,7 @@ def get_args():
     parser.add_argument('--search_type',type=str, default='gird', choices=['grid','random'])
 
     parser.add_argument('--model',type=str, default='svr_poly',
-                                            choices=['linear_reg', 'random_forest', 'extra_tree', 'decision_tree', 'bagging', 'gradient_boosting', 'svr_rbf', 'svr_linear', 'svr_poly', 'adaboost', 'xgboost'])
+                                            choices=['linear_reg', 'random_forest', 'extra_tree', 'decision_tree', 'bagging', 'gradient_boosting', 'svr_rbf', 'svr_linear', 'svr_poly', 'adaboost', 'xgboost', 'lightgbm'])
 
     # dataset option
     parser.add_argument('--clinic_var_OH',type=bool, default=False)
